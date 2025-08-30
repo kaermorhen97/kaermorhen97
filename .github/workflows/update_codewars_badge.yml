@@ -1,0 +1,33 @@
+name: Update Codewars Badge
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # runs daily at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  update-badge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Fetch Codewars stats and update badge
+        env:
+          CODEWARS_USERNAME: kaermorhen97
+        run: |
+          echo "Fetching Codewars stats..."
+          json=$(curl -s "https://www.codewars.com/api/v1/users/$CODEWARS_USERNAME")
+          rank=$(echo "$json" | jq -r '.ranks.overall.name')
+          kyu=$(echo "$json" | jq -r '.ranks.overall.rank')
+          completed=$(echo "$json" | jq -r '.codeChallenges.totalCompleted')
+
+          echo "{\"schemaVersion\":1,\"label\":\"Codewars\",\"message\":\"${kyu} ${rank} | ${completed} Kata\",\"color\":\"blue\"}" > codewars-badge.json
+
+      - name: Commit and push
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add codewars-badge.json
+          git diff --cached --quiet || git commit -m "Update Codewars badge"
+          git push
